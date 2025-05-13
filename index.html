@@ -3,28 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <title>Driver GPS Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#111111" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="icon" href="icons/icon-192x192.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body, html {
       height: 100%;
       margin: 0;
       padding: 0;
-      background-color: #111;
+      background-color: #111111;
       font-family: 'Inter', sans-serif;
       color: #f0f0f0;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
       text-align: center;
     }
 
     .logo {
       margin: 20px auto 10px;
-      width: 250px;
     }
 
     .login-container, .gps-container {
@@ -35,14 +32,20 @@
       width: 100%;
       margin: 10px auto;
       box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      transition: all 0.3s ease-in-out;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
-    input {
+    .login-container h2,
+    .gps-container h2 {
+      color: #ffffff;
+    }
+
+    .login-container input {
       width: 90%;
-      padding: 12px;
+      padding: 10px;
       margin: 10px 0;
       border: 1px solid #555;
       border-radius: 5px;
@@ -50,30 +53,29 @@
       color: #f0f0f0;
     }
 
-    input::placeholder {
+    .login-container input::placeholder {
       color: #aaa;
     }
 
-    button {
-      width: 95%;
-      padding: 12px;
+    .login-container button {
+      width: 100%;
+      padding: 10px;
       background: #28a745;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
-      margin-top: 10px;
       transition: background 0.2s;
     }
 
-    button:hover {
+    .login-container button:hover {
       background: #444;
     }
 
-    .logout-button {
-      background: #ff4444;
-      margin-top: 15px;
+    .error {
+      color: #ff4d4d;
+      font-size: 0.9em;
     }
 
     .label {
@@ -85,26 +87,25 @@
     .value {
       font-size: 1.2em;
       color: #ffffff;
-      cursor: pointer;
-    }
-
-    .error {
-      color: #ff4d4d;
-      font-size: 0.9em;
     }
 
     #location p {
       color: #cccccc;
     }
 
+    /* Spinner styling */
     .spinner {
-      border: 4px solid #333;
+      border: 4px solid #f0f0f0;
       border-top: 4px solid #28a745;
       border-radius: 50%;
-      width: 30px;
-      height: 30px;
+      width: 50px;
+      height: 50px;
       animation: spin 1s linear infinite;
-      margin: 10px auto;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
     }
 
     @keyframes spin {
@@ -115,24 +116,16 @@
     @media (max-width: 600px) {
       .login-container, .gps-container {
         padding: 15px;
-        width: 92%;
-        margin: 15px auto;
-      }
-
-      .logo {
-        width: 180px;
-        margin-top: 10px;
-      }
-
-      button {
-        padding: 10px;
-        font-size: 1em;
+        width: 90%;
+        margin: 20px auto;
       }
     }
   </style>
 </head>
 <body>
-  <img src="logoAOTMS.jpg" alt="Company Logo" class="logo" />
+  <img src="logoAOTMS.jpg" alt="Company Logo" class="logo" width="250" />
+
+  <div class="spinner" id="spinner"></div>
 
   <div class="login-container" id="loginContainer">
     <h2>Driver Login</h2>
@@ -148,11 +141,9 @@
     <h2>📍 Live GPS Tracker</h2>
     <h3 id="welcomeMsg"></h3>
     <div id="location">
-      <div class="spinner" id="spinner"></div>
-      <p>Fetching GPS location...</p>
+      <p>Waiting for location...</p>
     </div>
     <p>Status: <span style="color:limegreen;">● Live</span></p>
-    <button class="logout-button" onclick="logout()">🔒 Logout</button>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -180,15 +171,10 @@
 
     document.getElementById("loginForm").addEventListener("submit", function (e) {
       e.preventDefault();
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
       const errorMsg = document.getElementById("errorMsg");
       const loginBtn = document.getElementById("loginBtn");
-
-      if (!email || !password) {
-        errorMsg.textContent = "❌ Please enter both email and password.";
-        return;
-      }
 
       loginBtn.textContent = "Logging in...";
 
@@ -228,18 +214,22 @@
           setTimeout(() => ref.remove().then(() => console.log("🗑️ Entry auto-deleted")), 2 * 60 * 1000);
         })
         .catch(err => console.error("❌ Write error:", err));
+
+      // Hide spinner once location is acquired
+      spinner.style.display = 'none';
     }
 
     function handleError(error) {
       console.error("❌ GPS Error:", error);
-      output.innerHTML = `<p style='color:#ff4d4d;'>❌ GPS Error: ${error.message}</p>`;
+      output.innerHTML = `<p style="color:#ff4d4d;">❌ GPS Error: ${error.message}</p>`;
+      spinner.style.display = 'none';
     }
 
     function getLocation() {
-      output.innerHTML = `<div class="spinner" id="spinner"></div><p>Fetching GPS location...</p>`;
+      spinner.style.display = 'block'; // Show spinner before fetching location
       navigator.geolocation.getCurrentPosition(updateLocation, handleError, {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 5000, // Reduce timeout for faster mobile response
         maximumAge: 0
       });
     }
@@ -247,23 +237,10 @@
     function startTracking() {
       if ("geolocation" in navigator) {
         getLocation();
-        setInterval(getLocation, 7000);
+        setInterval(getLocation, 7000); // Continue tracking every 7 seconds
       } else {
-        output.innerHTML = "<p style='color:#ff4d4d;'>Geolocation not supported.</p>";
+        output.innerHTML = "<p style='color:#ff4d4d;'>Geolocation is not supported by this browser.</p>";
       }
-    }
-
-    function logout() {
-      auth.signOut().then(() => {
-        document.getElementById("gpsContainer").style.display = "none";
-        document.getElementById("loginContainer").style.display = "flex";
-        document.getElementById("loginBtn").textContent = "Login";
-        document.getElementById("loginForm").reset();
-        document.getElementById("errorMsg").textContent = "";
-        output.innerHTML = `<p>Waiting for location...</p>`;
-      }).catch((error) => {
-        alert("Error logging out: " + error.message);
-      });
     }
   </script>
 </body>
