@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#28a745" />
+  <title>AOTMS Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192x192.png" />
+  <meta name="description" content="Ambulance Optimized Traffic System" />
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+          console.log('✅ Service Worker registered.', reg);
+        }).catch(err => {
+          console.warn('❌ Service Worker registration failed:', err);
+        });
+      });
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      text-align: center;
+      padding: 2rem;
+      margin: 0;
+      background-color: #111;
+      color: #f0f0f0;
+    }
+    img {
+      width: 200px;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      color: #28a745;
+      font-size: 1.8rem;
+    }
+    p {
+      color: #ccc;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <img src="logoAOTMS.jpg" alt="AOTMS Logo" />
+  <h1>Ambulance Optimized Traffic System</h1>
+  <p>This is a PWA-enabled GPS tracking system for ambulance drivers.</p>
+</body>
+</html>
