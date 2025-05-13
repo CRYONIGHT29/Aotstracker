@@ -8,19 +8,127 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192x192.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-          console.log('✅ Service Worker registered:', reg);
-        }).catch(err => {
-          console.warn('❌ Service Worker registration failed:', err);
-        });
-      });
-    }
-  </script>
   <style>
-    /* Same CSS as your original, skipped here for brevity */
+    body, html {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      font-family: 'Inter', sans-serif;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .logo {
+      margin: 20px auto 10px;
+      width: 250px;
+    }
+
+    .login-container, .gps-container {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 100%;
+      margin: 10px auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    input {
+      width: 90%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #555;
+      border-radius: 5px;
+      background-color: #222;
+      color: #f0f0f0;
+    }
+
+    input::placeholder {
+      color: #aaa;
+    }
+
+    button {
+      width: 95%;
+      padding: 12px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #444;
+    }
+
+    .logout-button {
+      background: #ff4444;
+      margin-top: 15px;
+    }
+
+    .label {
+      font-weight: bold;
+      color: #bbbbbb;
+      margin-top: 10px;
+    }
+
+    .value {
+      font-size: 1.2em;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .error {
+      color: #ff4d4d;
+      font-size: 0.9em;
+    }
+
+    #location p {
+      color: #cccccc;
+    }
+
+    .spinner {
+      border: 4px solid #333;
+      border-top: 4px solid #28a745;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+      .login-container, .gps-container {
+        padding: 15px;
+        width: 92%;
+        margin: 15px auto;
+      }
+
+      .logo {
+        width: 180px;
+        margin-top: 10px;
+      }
+
+      button {
+        padding: 10px;
+        font-size: 1em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -40,9 +148,11 @@
     <h2>📍 Live GPS Tracker</h2>
     <h3 id="welcomeMsg"></h3>
     <div id="location">
-      <p>Waiting for location...</p>
+      <div class="spinner" id="spinner"></div>
+      <p>Fetching GPS location...</p>
     </div>
     <p>Status: <span style="color:limegreen;">● Live</span></p>
+    <button class="logout-button" onclick="logout()">🔒 Logout</button>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -66,6 +176,7 @@
 
     let currentUsername = null;
     const output = document.getElementById("location");
+    const spinner = document.getElementById("spinner");
 
     document.getElementById("loginForm").addEventListener("submit", function (e) {
       e.preventDefault();
@@ -85,7 +196,7 @@
         .then(() => {
           currentUsername = email.split("@")[0];
           document.getElementById("loginContainer").style.display = "none";
-          document.getElementById("gpsContainer").style.display = "block";
+          document.getElementById("gpsContainer").style.display = "flex";
           document.getElementById("welcomeMsg").textContent = `Welcome, ${currentUsername}`;
           startTracking();
         })
@@ -125,6 +236,7 @@
     }
 
     function getLocation() {
+      output.innerHTML = `<div class="spinner" id="spinner"></div><p>Fetching GPS location...</p>`;
       navigator.geolocation.getCurrentPosition(updateLocation, handleError, {
         enableHighAccuracy: true,
         timeout: 10000,
@@ -137,8 +249,21 @@
         getLocation();
         setInterval(getLocation, 7000);
       } else {
-        output.innerHTML = "<p style='color:#ff4d4d;'>Geolocation is not supported by this browser.</p>";
+        output.innerHTML = "<p style='color:#ff4d4d;'>Geolocation not supported.</p>";
       }
+    }
+
+    function logout() {
+      auth.signOut().then(() => {
+        document.getElementById("gpsContainer").style.display = "none";
+        document.getElementById("loginContainer").style.display = "flex";
+        document.getElementById("loginBtn").textContent = "Login";
+        document.getElementById("loginForm").reset();
+        document.getElementById("errorMsg").textContent = "";
+        output.innerHTML = `<p>Waiting for location...</p>`;
+      }).catch((error) => {
+        alert("Error logging out: " + error.message);
+      });
     }
   </script>
 </body>
