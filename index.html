@@ -202,6 +202,11 @@
       } else {
         document.getElementById("loginContainer").style.display = "flex";
         document.getElementById("gpsContainer").style.display = "none";
+        // Clear login form fields and reset button
+        document.getElementById("email").value = "";
+        document.getElementById("password").value = "";
+        document.getElementById("errorMsg").textContent = "";
+        document.getElementById("loginBtn").textContent = "Login";
         // Remove the session listener on logout
         if (sessionListener) {
           sessionListener.off();
