@@ -169,6 +169,19 @@
     const output = document.getElementById("location");
     const spinner = document.getElementById("spinner");
 
+    auth.onAuthStateChanged(function(user) {
+      if (user) {
+        currentUsername = user.email.split("@")[0];
+        document.getElementById("loginContainer").style.display = "none";
+        document.getElementById("gpsContainer").style.display = "flex";
+        document.getElementById("welcomeMsg").textContent = `Welcome, ${currentUsername}`;
+        startTracking();
+      } else {
+        document.getElementById("loginContainer").style.display = "flex";
+        document.getElementById("gpsContainer").style.display = "none";
+      }
+    });
+
     document.getElementById("loginForm").addEventListener("submit", function (e) {
       e.preventDefault();
       const email = document.getElementById("email").value;
@@ -180,11 +193,7 @@
 
       auth.signInWithEmailAndPassword(email, password)
         .then(() => {
-          currentUsername = email.split("@")[0];
-          document.getElementById("loginContainer").style.display = "none";
-          document.getElementById("gpsContainer").style.display = "flex";
-          document.getElementById("welcomeMsg").textContent = `Welcome, ${currentUsername}`;
-          startTracking();
+          // currentUsername and UI will be set by onAuthStateChanged
         })
         .catch((err) => {
           errorMsg.textContent = "❌ " + err.message;
