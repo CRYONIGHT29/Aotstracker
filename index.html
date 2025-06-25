@@ -144,6 +144,7 @@
       <p>Waiting for location...</p>
     </div>
     <p>Status: <span style="color:limegreen;">● Live</span></p>
+    <button id="logoutBtn" style="margin-top:20px; padding:10px 20px; background:#ff4d4d; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Logout</button>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -168,6 +169,9 @@
     let currentUsername = null;
     const output = document.getElementById("location");
     const spinner = document.getElementById("spinner");
+    let geoWatchId = null;
+    let lastUpdateTimestamp = 0;
+    let firstTimeoutRetry = false;
 
     auth.onAuthStateChanged(function(user) {
       if (user) {
@@ -175,7 +179,7 @@
         document.getElementById("loginContainer").style.display = "none";
         document.getElementById("gpsContainer").style.display = "flex";
         document.getElementById("welcomeMsg").textContent = `Welcome, ${currentUsername}`;
-        startTracking();
+        setTimeout(() => startTracking(), 1500);
       } else {
         document.getElementById("loginContainer").style.display = "flex";
         document.getElementById("gpsContainer").style.display = "none";
@@ -191,7 +195,10 @@
 
       loginBtn.textContent = "Logging in...";
 
-      auth.signInWithEmailAndPassword(email, password)
+      auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+        .then(function() {
+          return auth.signInWithEmailAndPassword(email, password);
+        })
         .then(() => {
           // currentUsername and UI will be set by onAuthStateChanged
         })
@@ -202,6 +209,11 @@
     });
 
     function updateLocation(position) {
+      const nowMs = Date.now();
+      if (nowMs - lastUpdateTimestamp < 5000) {
+        return; // Ignore updates that are too soon
+      }
+      lastUpdateTimestamp = nowMs;
       const lat = position.coords.latitude.toFixed(6);
       const lon = position.coords.longitude.toFixed(6);
       const accuracy = position.coords.accuracy.toFixed(1);
@@ -230,27 +242,59 @@
 
     function handleError(error) {
       console.error("❌ GPS Error:", error);
-      output.innerHTML = `<p style="color:#ff4d4d;">❌ GPS Error: ${error.message}</p>`;
+      let msg = `❌ GPS Error: ${error.message}`;
+      if (error.code === error.TIMEOUT) {
+        msg += '<br>Please ensure your device is outdoors or has a clear view of the sky, and that location is set to "High accuracy" in Android settings.';
+        if (!firstTimeoutRetry) {
+          firstTimeoutRetry = true;
+          setTimeout(() => {
+            if (geoWatchId !== null) {
+              navigator.geolocation.clearWatch(geoWatchId);
+            }
+            geoWatchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+              enableHighAccuracy: true,
+              maximumAge: 0,
+              timeout: 20000
+            });
+          }, 1500);
+          return;
+        }
+      }
+      output.innerHTML = `<p style="color:#ff4d4d;">${msg}</p>`;
       spinner.style.display = 'none';
     }
 
     function getLocation() {
       spinner.style.display = 'block'; // Show spinner before fetching location
-      navigator.geolocation.getCurrentPosition(updateLocation, handleError, {
-        enableHighAccuracy: true,
-        timeout: 5000, // Reduce timeout for faster mobile response
-        maximumAge: 0
-      });
+      // No-op: watchPosition will handle updates
     }
 
     function startTracking() {
       if ("geolocation" in navigator) {
-        getLocation();
-        setInterval(getLocation, 7000); // Continue tracking every 7 seconds
+        if (geoWatchId !== null) {
+          navigator.geolocation.clearWatch(geoWatchId);
+        }
+        lastUpdateTimestamp = 0;
+        firstTimeoutRetry = false;
+        geoWatchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 20000 // 20 seconds for better reliability on mobile
+        });
       } else {
         output.innerHTML = "<p style='color:#ff4d4d;'>Geolocation is not supported by this browser.</p>";
       }
     }
+
+    // Add logout button functionality
+    document.getElementById("logoutBtn").addEventListener("click", function() {
+      auth.signOut();
+      if (geoWatchId !== null) {
+        navigator.geolocation.clearWatch(geoWatchId);
+        geoWatchId = null;
+      }
+      lastUpdateTimestamp = 0;
+    });
   </script>
 </body>
 </html>
