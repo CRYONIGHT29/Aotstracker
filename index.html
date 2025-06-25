@@ -172,17 +172,41 @@
     let geoWatchId = null;
     let lastUpdateTimestamp = 0;
     let firstTimeoutRetry = false;
+    let sessionListener = null;
 
-    auth.onAuthStateChanged(function(user) {
+    auth.onAuthStateChanged(async function(user) {
       if (user) {
         currentUsername = user.email.split("@")[0];
         document.getElementById("loginContainer").style.display = "none";
         document.getElementById("gpsContainer").style.display = "flex";
         document.getElementById("welcomeMsg").textContent = `Welcome, ${currentUsername}`;
         setTimeout(() => startTracking(), 1500);
+
+        const sessionId = Date.now().toString() + Math.random().toString(36).substr(2);
+        await db.ref('sessions/' + user.uid).set(sessionId);
+        localStorage.setItem('sessionId', sessionId);
+
+        // Remove any previous listener
+        if (sessionListener) {
+          sessionListener.off();
+          sessionListener = null;
+        }
+        // Set up the session listener for this user
+        sessionListener = db.ref('sessions/' + user.uid);
+        sessionListener.on('value', (snapshot) => {
+          if (snapshot.val() !== localStorage.getItem('sessionId')) {
+            auth.signOut();
+            alert('You have been logged out because your account was used elsewhere.');
+          }
+        });
       } else {
         document.getElementById("loginContainer").style.display = "flex";
         document.getElementById("gpsContainer").style.display = "none";
+        // Remove the session listener on logout
+        if (sessionListener) {
+          sessionListener.off();
+          sessionListener = null;
+        }
       }
     });
 
